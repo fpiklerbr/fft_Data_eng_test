@@ -1,0 +1,91 @@
+# This notebook will be used to answer the questions regarding the data engineer test sent to me, Fernando Pikler, by the team in the company. 
+# The main language is python and all steps are going to be described.
+
+## Upon reading the documentation, first i'll bring the categories to investigate which one is the shoes category.
+url = 'https://api.escuelajs.co/api/v1/categories'
+response = requests.get(url)
+
+data = response.json()
+
+dcategories = pd.DataFrame(data)
+print(dcategories)
+
+## now, i'm bringing the data for products with te category embedded in the url, as stated in the documentation.
+url = 'https://api.escuelajs.co/api/v1/products/?categoryId=4'
+response = requests.get(url)
+data = response.json()
+
+dproducts = pd.json_normalize(data).set_index('id')
+
+print(dproducts)
+
+### now investigating the FX API, reading the documentation, i'll bring the data as requested
+entrypoint = 'https://sdw-wsrest.ecb.europa.eu/service/' ### entry address
+resource = 'data' ### we want the data
+flowRef ='EXR' ### to bring exchange rates as requested             
+key = 'D..EUR.SP00.A' # Again upon reading the documentation, daily rates, all currencies vs EUR, then standard parameters to bring data 
+
+# Define the parameters
+parameters = {
+    'startPeriod': '2023-02-09',  # Start date of the time series
+    'endPeriod': '2023-02-10',     # End of the time series
+    'dataflow': 'ECB/EAI', ## as requested
+    'dimensionAtObservation': 'AllDimensions'
+}
+
+### Construct the URL: https://sdw-wsrest.ecb.europa.eu/service/data/EXR/D.CHF.EUR.SP00.A
+request_url = entrypoint + resource + '/'+ flowRef + '/' + key
+
+### Make the HTTP request
+response = requests.get(request_url, params=parameters)
+
+### Check if the response returns succesfully with response code 200
+print(response)
+
+### Print the full URL
+print(response.url)
+
+### Make the HTTP request again, now requesting for CSV format
+response = requests.get(request_url, params=parameters, headers={'Accept': 'text/csv'})
+### Response succesful? (Response code 200)
+print(response)
+
+### Read the response as a file into a Pandas DataFrame
+df = pd.read_csv(io.StringIO(response.text))
+
+### Check the DataFrame's information
+df.info()
+
+### Create a new DataFrame called 'ts'
+ts = df.filter(['TIME_PERIOD','CURRENCY', 'OBS_VALUE'], axis=1)
+### 'TIME_PERIOD' was of type 'object' (as seen in df.info). Convert it to datetime first
+ts['TIME_PERIOD'] = pd.to_datetime(ts['TIME_PERIOD'])
+### Set 'TIME_PERIOD' to be the index
+ts = ts.set_index('TIME_PERIOD')
+### Print the last 5 rows to screen
+ts.tail()
+
+### Now choosing one date to set as date used
+ts = ts[ts.index == pd.to_datetime('2023-02-10')]
+
+print(ts)
+
+### Bringing only usd values since the products are in USD
+ts_rate = ts[ts.CURRENCY == 'USD']
+
+print(ts_rate)
+
+### transform the products table to bring only necessary dimensions
+products = dproducts[['title','price']].copy()
+
+products.tail()
+
+### getting values from exr table to be used to multiply on the products table, and then create a table multiplying the objects and bringing requested dimensions
+rate = ts_rate.iloc[0,1] ### the value of the exr
+date = ts_rate.index.values[0] ### the reference date
+
+products['eurprice'] = products['price'] * rate ### new column with price in eur
+products['ref_exr_date'] = date ### date as another column
+final_table = products
+
+print(final_table) ### final table of the exercise

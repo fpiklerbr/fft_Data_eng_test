@@ -1,6 +1,11 @@
 # This notebook will be used to answer the questions regarding the data engineer test sent to me, Fernando Pikler, by the team in the company. 
 # The main language is python and all steps are going to be described.
 
+# importing libs
+import requests
+import pandas as pd
+import io
+
 ## Upon reading the documentation, first i'll bring the categories to investigate which one is the shoes category.
 url = 'https://api.escuelajs.co/api/v1/categories'
 response = requests.get(url)

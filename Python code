@@ -89,7 +89,7 @@ products.tail()
 rate = ts_rate.iloc[0,1] ### the value of the exr
 date = ts_rate.index.values[0] ### the reference date
 
-products['eurprice'] = products['price'] * rate ### new column with price in eur
+products['eurprice'] = products['price'] * 1/rate ### new column with price in eur
 products['ref_exr_date'] = date ### date as another column
 final_table = products
 
